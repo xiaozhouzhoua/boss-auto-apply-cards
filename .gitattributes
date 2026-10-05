@@ -1,0 +1,11 @@
+# 统一换行符，避免跨平台协作时 Git 反复提示 LF/CRLF
+* text=auto eol=lf
+
+# HTML 用两空格缩进；不要在 diff 里把整文件重排
+*.html text eol=lf
+*.md   text eol=lf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.pdf binary

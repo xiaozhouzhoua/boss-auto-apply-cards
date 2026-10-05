@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>BOSS 直聘自动投递 — GitHub 项目调研</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nOCcgZmlsbD0nIzFjMWQyMScvPjxwYXRoIGQ9J004IDEwaDE2TTggMTZoMTZNOCAyMmgxMCcgc3Ryb2tlPScjZTllOWYwJyBzdHJva2Utd2lkdGg9JzIuNicgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PC9zdmc+">
+<style>
+  /* ============ tokens ============ */
+  :root{
+    --ink:#f2f2f7;
+    --ink-2:rgba(235,235,245,.62);
+    --ink-3:rgba(235,235,245,.40);
+    --ink-4:rgba(235,235,245,.26);
+
+    --blue:#0a84ff;
+    --blue-2:#4aa3ff;
+    --green:#30d158;
+    --amber:#ffd60a;
+    --orange:#ff9f0a;
+    --purple:#bf5af2;
+
+    /* glass */
+    --glass:rgba(120,126,150,.13);
+    --glass-strong:rgba(126,132,158,.18);
+    --glass-inner:rgba(255,255,255,.045);
+    --rim:rgba(255,255,255,.13);
+    --rim-2:rgba(255,255,255,.07);
+    --blur:30px;
+    --sat:190%;
+
+    --r-xl:30px;
+    --r-lg:22px;
+    --r-md:14px;
+
+    --sh-1:0 1px 2px rgba(0,0,0,.30), 0 8px 24px -10px rgba(0,0,0,.55);
+    --sh-2:0 1px 2px rgba(0,0,0,.34), 0 26px 60px -24px rgba(0,0,0,.72);
+    --top-sheen:inset 0 1px 0 rgba(255,255,255,.10);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:#05060a;
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:16px;
+    line-height:1.65;
+    letter-spacing:-.006em;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+
+  /* ============ ambient background (this is what the glass blurs) ============ */
+  .ambient{
+    position:fixed;inset:-12%;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(52% 44% at 74% 6%, rgba(10,132,255,.34), transparent 68%),
+      radial-gradient(46% 40% at 16% 22%, rgba(191,90,242,.26), transparent 66%),
+      radial-gradient(48% 40% at 88% 62%, rgba(48,209,88,.15), transparent 66%),
+      radial-gradient(60% 48% at 30% 96%, rgba(255,55,95,.17), transparent 70%),
+      linear-gradient(168deg,#0b0d16 0%,#070810 46%,#05060a 100%);
+    filter:saturate(118%);
+  }
+  .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
+  .orb.a{width:44vw;height:44vw;left:-8vw;top:-10vw;background:radial-gradient(circle,rgba(10,132,255,.62),transparent 66%);animation:drift1 34s ease-in-out infinite}
+  .orb.b{width:38vw;height:38vw;right:-6vw;top:12vw;background:radial-gradient(circle,rgba(191,90,242,.52),transparent 66%);animation:drift2 42s ease-in-out infinite}
+  .orb.c{width:40vw;height:40vw;left:24vw;bottom:-14vw;background:radial-gradient(circle,rgba(48,209,88,.34),transparent 68%);animation:drift1 50s ease-in-out infinite reverse}
+  @keyframes drift1{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(5vw,3vw,0) scale(1.12)}}
+  @keyframes drift2{0%,100%{transform:translate3d(0,0,0) scale(1.06)}50%{transform:translate3d(-5vw,4vw,0) scale(.96)}}
+
+  /* fine grain — stops large blurred fields from looking plasticky */
+  .grain{
+    position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.22;
+    background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjg1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbHRlcj0idXJsKCNuKSIgb3BhY2l0eT0iLjUiLz48L3N2Zz4=");
+    mix-blend-mode:overlay;
+  }
+
+  /* ============ glass primitive ============ */
+  .glass{
+    position:relative;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+    backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+    border:1px solid var(--rim-2);
+    border-radius:var(--r-xl);
+    box-shadow:var(--sh-2),var(--top-sheen);
+  }
+  /* gradient rim — bright where light hits, fading around the edge */
+  .glass::before{
+    content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+    background:linear-gradient(150deg,rgba(255,255,255,.30),rgba(255,255,255,.05) 34%,rgba(255,255,255,0) 62%,rgba(255,255,255,.12));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+            mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+            mask-composite:exclude;
+    pointer-events:none;
+  }
+  .glass > *{position:relative;z-index:1}
+
+  /* ============ layout ============ */
+  .page{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:30px 24px 96px}
+  section{margin-top:26px}
+
+  /* ---- masthead ---- */
+  .masthead{padding:46px 46px 40px;overflow:hidden}
+  .masthead::after{
+    content:"";position:absolute;right:-90px;top:-110px;width:340px;height:340px;border-radius:50%;
+    background:radial-gradient(circle,rgba(10,132,255,.30),transparent 66%);
+    filter:blur(30px);pointer-events:none;
+  }
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 18px;
+  }
+  .eyebrow .led{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+  h1{
+    margin:0 0 16px;max-width:20ch;
+    font-size:clamp(32px,4.8vw,50px);line-height:1.1;
+    font-weight:700;letter-spacing:-.028em;
+    background:linear-gradient(180deg,#ffffff,#c9cee0);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .standfirst{max-width:60ch;margin:0;font-size:17px;line-height:1.68;color:var(--ink-2)}
+  .standfirst b{color:var(--ink);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+  .chip{
+    font-size:12.5px;font-weight:500;color:var(--ink-2);
+    padding:6px 13px;border-radius:999px;
+    background:var(--glass-inner);
+    border:1px solid var(--rim-2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    white-space:nowrap;
+  }
+  .chip b{color:var(--ink);font-weight:650}
+
+  /* ---- control bar ---- */
+  .bar{
+    position:sticky;top:14px;z-index:30;
+    display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+    padding:10px 12px;border-radius:var(--r-lg);
+    background:rgba(22,24,34,.55);
+    -webkit-backdrop-filter:blur(34px) saturate(200%);
+    backdrop-filter:blur(34px) saturate(200%);
+    border:1px solid var(--rim);
+    box-shadow:var(--sh-2),var(--top-sheen);
+  }
+  .bar::before{
+    content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+    background:linear-gradient(160deg,rgba(255,255,255,.26),rgba(255,255,255,0) 50%,rgba(255,255,255,.10));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+    pointer-events:none;
+  }
+  .bar > *{position:relative;z-index:1}
+  .bar .prog{
+    position:absolute;left:14px;right:14px;bottom:-1px;height:1.5px;border-radius:2px;
+    background:linear-gradient(90deg,var(--blue),var(--purple));
+    transform-origin:0 50%;transform:scaleX(0);
+    transition:transform .08s linear;opacity:.85;pointer-events:none;z-index:2;
+  }
+
+  .seg{
+    display:flex;gap:2px;padding:3px;border-radius:12px;
+    background:rgba(255,255,255,.055);
+    border:1px solid var(--rim-2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .seg button{
+    font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;
+    color:var(--ink-2);background:transparent;border:0;
+    padding:6px 14px;border-radius:9px;
+    transition:background .18s,color .18s,box-shadow .18s;
+  }
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{
+    color:#fff;
+    background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,.10));
+    box-shadow:0 1px 2px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.22);
+  }
+
+  .search{margin-left:auto;position:relative;display:flex;align-items:center}
+  .search svg{position:absolute;left:11px;opacity:.42;pointer-events:none}
+  .search input{
+    font:inherit;font-size:13.5px;color:var(--ink);
+    background:rgba(255,255,255,.055);
+    border:1px solid var(--rim-2);border-radius:11px;
+    padding:7px 13px 7px 32px;width:230px;outline:none;
+    transition:border-color .18s,background .18s,box-shadow .18s;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .search input::placeholder{color:var(--ink-4)}
+  .search input:focus{
+    border-color:rgba(10,132,255,.65);background:rgba(255,255,255,.08);
+    box-shadow:0 0 0 3.5px rgba(10,132,255,.20);
+  }
+  .count{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* ---- section head ---- */
+  .sec-head{display:flex;align-items:baseline;gap:12px;padding:0 8px;margin-bottom:14px}
+  h2{margin:0;font-size:19px;font-weight:650;letter-spacing:-.018em}
+  .sec-note{margin-left:auto;font-size:12.5px;color:var(--ink-3);text-align:right}
+
+  /* ---- overview table ---- */
+  .tablewrap{padding:8px;overflow:hidden}
+  .tscroll{overflow-x:auto;border-radius:var(--r-lg)}
+  table{border-collapse:collapse;width:100%;min-width:860px;font-size:13.8px}
+  th,td{text-align:left;padding:12px 16px;vertical-align:middle}
+  thead th{
+    font-size:11px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-3);white-space:nowrap;
+    border-bottom:1px solid var(--rim-2);
+  }
+  tbody tr{border-bottom:1px solid rgba(255,255,255,.05);transition:background .16s}
+  tbody tr:last-child{border-bottom:0}
+  tbody tr:hover{background:rgba(255,255,255,.05)}
+  td.name a{font-weight:600;color:var(--ink);border:0}
+  td.name a:hover{color:var(--blue-2)}
+  td.name .owner{display:block;font-size:11.5px;color:var(--ink-4);margin-top:1px;padding-left:14px}
+  td.dim{color:var(--ink-2);font-size:12.8px}
+  td.stars{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .prio{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:9px;vertical-align:middle}
+  .prio.p1{background:var(--blue);box-shadow:0 0 9px var(--blue)}
+  .prio.p2{background:var(--purple);box-shadow:0 0 9px var(--purple)}
+  .prio.p3{background:var(--orange);box-shadow:0 0 9px var(--orange)}
+  .prio.p0{background:var(--ink-4)}
+
+  /* ---- entry cards ---- */
+  #list{display:flex;flex-direction:column;gap:18px}
+  .entry{
+    display:grid;grid-template-columns:206px 1fr;gap:0 34px;
+    padding:32px 34px 28px;
+    border-radius:var(--r-xl);
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+    backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+    border:1px solid var(--rim-2);
+    box-shadow:var(--sh-1),var(--top-sheen);
+    transition:transform .3s cubic-bezier(.4,0,.2,1),box-shadow .3s,border-color .3s,background .3s;
+  }
+  .entry:hover{
+    transform:translateY(-2px);
+    background:var(--glass-strong);
+    border-color:rgba(255,255,255,.13);
+    box-shadow:var(--sh-2),var(--top-sheen);
+  }
+  .entry.featured{
+    background:linear-gradient(150deg,rgba(10,132,255,.16),rgba(120,126,150,.12) 52%);
+    border-color:rgba(10,132,255,.30);
+  }
+  .entry.featured:hover{border-color:rgba(10,132,255,.48)}
+  .entry[hidden]{display:none}
+
+  .rail{padding-top:1px}
+  .rank{
+    display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+    font-variant-numeric:tabular-nums;color:var(--ink-3);margin-bottom:9px;
+  }
+  .entry.featured .rank{color:var(--blue-2)}
+  .badge{
+    display:inline-block;margin-left:8px;vertical-align:1px;
+    font-size:10.5px;font-weight:650;letter-spacing:.02em;
+    padding:2px 8px;border-radius:999px;color:#fff;
+    background:rgba(10,132,255,.85);
+    box-shadow:0 1px 6px rgba(10,132,255,.45);
+  }
+  .badge.alt{background:rgba(191,90,242,.80);box-shadow:0 1px 6px rgba(191,90,242,.45)}
+  .rname{
+    display:block;font-size:15.5px;font-weight:650;letter-spacing:-.014em;
+    line-height:1.35;margin-bottom:5px;word-break:break-word;
+  }
+  .rname a{color:var(--ink);border:0}
+  .rname a:hover{color:var(--blue-2)}
+  .rowner{display:block;font-size:11.5px;color:var(--ink-4);word-break:break-all;letter-spacing:.01em}
+  .rail dl{margin:18px 0 0}
+  .rail dt{
+    font-size:10px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-4);margin-top:11px;
+  }
+  .rail dd{margin:1px 0 0;font-size:12.4px;color:var(--ink-2);line-height:1.5}
+  .rail dd.num{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+  .body{min-width:0}
+  .headline{margin:0 0 10px;font-size:20.5px;line-height:1.4;font-weight:640;letter-spacing:-.018em;max-width:44ch}
+  .summary{margin:0 0 22px;font-size:14.8px;line-height:1.7;color:var(--ink-2);max-width:62ch}
+
+  .subhead{
+    font-size:10.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 10px;
+  }
+  ul.feat{list-style:none;margin:0 0 20px;padding:0;max-width:64ch}
+  ul.feat li{
+    position:relative;padding-left:22px;margin-bottom:7px;
+    font-size:14.4px;line-height:1.62;color:rgba(242,242,247,.90);
+  }
+  ul.feat li::before{
+    content:"";position:absolute;left:5px;top:.66em;
+    width:6px;height:6px;border-radius:50%;
+    background:linear-gradient(180deg,rgba(255,255,255,.60),rgba(255,255,255,.28));
+    box-shadow:inset 0 .5px 0 rgba(255,255,255,.5);
+  }
+  .entry.featured ul.feat li::before{
+    background:linear-gradient(180deg,var(--blue-2),var(--blue));
+    box-shadow:0 0 8px rgba(10,132,255,.6);
+  }
+
+  .callout{
+    max-width:62ch;margin:0 0 12px;
+    font-size:13.8px;line-height:1.68;color:var(--ink-2);
+    padding:13px 16px;border-radius:var(--r-md);
+    background:rgba(255,255,255,.045);
+    border:1px solid var(--rim-2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .callout .lbl{
+    display:block;margin-bottom:4px;
+    font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);
+  }
+  .callout.caution{
+    background:linear-gradient(180deg,rgba(255,159,10,.13),rgba(255,159,10,.06));
+    border-color:rgba(255,159,10,.26);
+  }
+  .callout.caution .lbl{color:var(--orange)}
+
+  .entry-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:13.5px;font-weight:550;color:var(--ink);
+    padding:8px 16px;border-radius:11px;border:1px solid var(--rim);
+    background:linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.055));
+    box-shadow:0 1px 2px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.16);
+    transition:transform .16s,background .18s,box-shadow .18s;
+  }
+  .btn:hover{background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.09))}
+  .btn:active{transform:scale(.975)}
+  .btn.primary{
+    color:#fff;border-color:rgba(10,132,255,.55);
+    background:linear-gradient(180deg,rgba(10,132,255,.95),rgba(0,102,214,.95));
+    box-shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px -8px rgba(10,132,255,.75),inset 0 1px 0 rgba(255,255,255,.28);
+  }
+  .btn.primary:hover{background:linear-gradient(180deg,#2b95ff,#0a6fd6)}
+
+  /* ---- notes / steps ---- */
+  .panel{padding:34px 38px}
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0;max-width:70ch}
+  ol.steps li{
+    counter-increment:s;position:relative;
+    padding:0 0 20px 46px;font-size:14.8px;line-height:1.7;color:var(--ink-2);
+  }
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps li::before{
+    content:counter(s,decimal-leading-zero);
+    position:absolute;left:0;top:1px;
+    display:grid;place-items:center;width:29px;height:29px;border-radius:9px;
+    font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--blue-2);background:rgba(10,132,255,.14);
+    border:1px solid rgba(10,132,255,.28);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+  }
+  ol.steps li b{color:var(--ink);font-weight:600}
+
+  ul.notes{list-style:none;margin:0;padding:0;max-width:70ch}
+  ul.notes li{
+    position:relative;padding:0 0 0 42px;margin-bottom:19px;
+    font-size:14.8px;line-height:1.7;color:var(--ink-2);
+  }
+  ul.notes li:last-child{margin-bottom:0}
+  ul.notes li .idx{
+    position:absolute;left:0;top:1px;
+    display:grid;place-items:center;width:29px;height:29px;border-radius:9px;
+    font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;
+    color:var(--ink-3);background:rgba(255,255,255,.06);
+    border:1px solid var(--rim-2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  ul.notes li b{color:var(--ink);font-weight:600}
+
+  code{
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.85em;letter-spacing:0;
+    padding:.1em .44em;border-radius:5px;color:#a8cbff;
+    background:rgba(10,132,255,.13);
+    border:1px solid rgba(10,132,255,.22);
+    white-space:nowrap;
+  }
+
+  .empty{padding:64px 0;text-align:center;color:var(--ink-3);font-size:14.5px}
+
+  footer{
+    margin-top:34px;padding:26px 34px;border-radius:var(--r-xl);
+    font-size:12.6px;line-height:1.8;color:var(--ink-3);
+    background:rgba(255,255,255,.028);
+    border:1px solid var(--rim-2);
+  }
+
+  /* ---- entrance reveal ---- */
+  .reveal{opacity:0;transform:translateY(16px) scale(.994)}
+  .reveal.in{
+    opacity:1;transform:none;
+    transition:opacity .62s cubic-bezier(.32,.72,0,1),transform .62s cubic-bezier(.32,.72,0,1);
+  }
+
+  /* ============ graceful degradation ============ */
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .glass,.entry,.bar{
+      background:rgba(26,28,38,.94) !important;
+      -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+    }
+    .entry.featured{background:linear-gradient(150deg,rgba(20,40,70,.95),rgba(30,32,46,.95)) !important}
+    .bar{background:rgba(20,22,32,.97) !important}
+  }
+  @media (prefers-reduced-transparency:reduce){
+    .glass,.entry,.bar{background:rgba(26,28,38,.95);-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .orb{animation:none}
+    .reveal{opacity:1;transform:none}
+    *{transition-duration:.01ms !important}
+  }
+
+  /* ============ responsive ============ */
+  @media (max-width:900px){
+    .masthead{padding:34px 26px 30px}
+    .panel{padding:26px 24px}
+    .entry{grid-template-columns:1fr;gap:0;padding:26px 24px 24px}
+    .rail{
+      display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;
+      padding-bottom:14px;margin-bottom:16px;
+      border-bottom:1px solid var(--rim-2);
+    }
+    .rname{margin:0}
+    .rowner{margin-left:auto}
+    .rail dl{display:none}
+    .headline{font-size:19px}
+    .sec-note{display:none}
+  }
+  @media (max-width:640px){
+    .page{padding:18px 14px 72px}
+    .bar{top:8px;padding:9px}
+    .search{margin-left:0;width:100%}
+    .search input{width:100%}
+    .count{display:none}
+    .masthead{padding:28px 20px 26px}
+    h1{font-size:29px}
+    .standfirst{font-size:15.5px}
+    .seg{width:100%;overflow-x:auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient" aria-hidden="true">
+  <span class="orb a"></span><span class="orb b"></span><span class="orb c"></span>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<div class="page">
+
+  <header class="masthead glass">
+    <p class="eyebrow"><span class="led"></span>GitHub 项目调研 · 求职自动化</p>
+    <h1>BOSS 直聘自动投递简历，有哪些开源方案</h1>
+    <p class="standfirst">
+      收录 9 个可用于自动投递简历的项目，按形态分为本地程序、浏览器扩展与命令行三类。
+      <b>它们本质上都是浏览器自动化，与平台用户协议存在冲突</b>，使用前请先评估账号风险，
+      并优先选择支持「先审核再发送」的方案。
+    </p>
+    <div class="chips">
+      <span class="chip">共 <b>9</b> 个项目</span>
+      <span class="chip">最高 <b>8.4k</b> Star</span>
+      <span class="chip"><b>6</b> 种技术形态</span>
+      <span class="chip">数据来自各项目 README</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="seg" id="filters">
+      <button data-filter="all" aria-pressed="true">全部</button>
+      <button data-filter="pick" aria-pressed="false">重点推荐</button>
+      <button data-filter="gui" aria-pressed="false">本地程序</button>
+      <button data-filter="ext" aria-pressed="false">浏览器扩展</button>
+      <button data-filter="cli" aria-pressed="false">命令行</button>
+    </div>
+    <label class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.7-3.7"/></svg>
+      <input id="q" type="search" placeholder="搜索项目、语言或特点…" autocomplete="off" aria-label="搜索项目">
+    </label>
+    <span class="count" id="count"></span>
+    <span class="prog" id="prog"></span>
+  </div>
+
+  <section id="overview">
+    <div class="sec-head">
+      <h2>速览</h2>
+      <p class="sec-note">按推荐优先级排列，点击仓库名跳转</p>
+    </div>
+    <div class="tablewrap glass">
+      <div class="tscroll">
+        <table>
+          <thead>
+            <tr>
+              <th>项目</th><th>形态</th><th>技术栈</th><th>核心机制</th><th>许可证</th>
+              <th style="text-align:right">Star</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="detail">
+    <div class="sec-head">
+      <h2>项目详情</h2>
+      <p class="sec-note">含配置要点与风险提示</p>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section id="order">
+    <div class="sec-head"><h2>推荐上手顺序</h2></div>
+    <div class="panel glass">
+      <ol class="steps">
+        <li><b>只想最快见效</b> — 装 <code>boss-helper</code> 浏览器扩展，零配置，装完就能批量投递。</li>
+        <li><b>要功能最全、能接受装环境</b> — 上 <code>get_jobs</code>。务必先做这一步：从 release 下载 <code>getjobs.db.template</code>，<b>重命名为 <code>getjobs.db</code></b> 放进 <code>db/</code> 目录，否则项目起不来。</li>
+        <li><b>最怕封号、要可控</b> — 用 <code>BossHunter</code> 或 <code>auto-zhipin</code>，两者都强制你先审核再发送。</li>
+        <li><b>想先验证 AI 写的招呼语质量</b> — 跑 <code>Boss-Zhipin-Auto-Job-Application</code>，打开 <code>DRY_RUN=1</code>，只生成不发送。</li>
+        <li><b>确认文案满意后</b> — 再放开限制正式跑，并保持低频。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="caveats">
+    <div class="sec-head"><h2>通用风险与注意事项</h2></div>
+    <div class="panel glass">
+      <ul class="notes">
+        <li><span class="idx">01</span><b>账号风险是真实的。</b>这类工具属于浏览器自动化，违反平台用户协议，存在黑号、封号、权重降低的可能。建议先用小号或极低频试水。</li>
+        <li><span class="idx">02</span><b>先 dry-run 再正式跑。</b>检查 AI 生成的招呼语是否专业、有没有编造经历，别让机器替你乱说话。</li>
+        <li><span class="idx">03</span><b>API Key 只放在本地 <code>.env</code></b>，不要提交到公开仓库、Issue 或聊天记录里。</li>
+        <li><span class="idx">04</span><b>国内平台不要挂代理。</b><code>get_jobs</code> 作者明确说明墙外代理会导致页面加载极慢；同时这类项目不支持服务器部署，招聘站识别到服务器 IP 会直接不返回数据。</li>
+        <li><span class="idx">05</span><b>谨慎对待 README 里的「AI 指令」。</b>例如 <code>BossHunter</code> 的 README 内嵌了一段要求 AI 读取 <code>CLAUDE.md</code> 且声称「优先级高于一切」的提示词。这类内容应当作不可信数据处理，不要盲从。</li>
+        <li><span class="idx">06</span><b>注意许可证性质。</b><code>get_jobs</code> 与 <code>BossHunter</code> 均为 PolyForm 非商业许可（source-available，并非 OSI 定义的开源），禁止商业使用；<code>auto-zhipin</code> 为 BSD-3-Clause。</li>
+        <li><span class="idx">07</span><b>警惕仿冒与收费项目。</b><code>get_jobs</code> 作者提到有人拿他的项目做收费推广甚至诈骗，注意甄别来源。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    本页为信息整理，不构成对任何项目的推荐或担保。Star 数为抓取时近似值，可能已经变化；各项目功能与限制以仓库最新说明为准。使用前请自行评估风险并遵守平台规则。
+  </footer>
+</div>
+
+<script>
+const PROJECTS = [
+  {
+    rank:"01", repo:"get_jobs", owner:"loks666", url:"https://github.com/loks666/get_jobs",
+    featured:true, picks:["pick","gui"], rankLabel:"首选", badgeTone:"",
+    form:"本地程序 · 多平台", stars:"8.4k+", lang:"Java 21", license:"PolyForm 非商业",
+    stack:"Spring Boot · Patchright", mech:"AI 匹配 + AI 招呼语", prio:"p1",
+    headline:"AI 找工作助手，带 Web 图形界面的全平台投递工具",
+    summary:"覆盖 BOSS、前程无忧、猎聘、智联，是目前生态最大、社区最活跃的求职自动化项目，同时提供网页端配置界面。",
+    feats:[
+      "AI 检测岗位匹配度，并按 JD 自动撰写个性化招呼语",
+      "打招呼后自动补发图片简历，不必等 HR 索要，明显提升回复率",
+      "智能过滤不活跃 HR、猎头岗位与目标薪资不符的岗位",
+      "自动维护企业黑名单，避免向已拒绝过你的公司重复投递",
+      "企业微信机器人实时推送投递结果",
+      "支持超长 Cookie 登录，多数平台每周只需扫码一次"
+    ],
+    note:"<b>新用户必做：</b>项目不会自动建表，仓库也不含数据库文件。需到 release 页下载 <code>getjobs.db.template</code>，重命名为 <code>getjobs.db</code> 后放入 <code>db/</code> 目录，否则无法启动。",
+    caution:"不支持服务器部署（服务器 IP 会被识别）；必须关闭墙外代理；作者自述目前仅 BOSS 端实测可用，其他平台建议手动兜底。BOSS 打招呼上限已放宽至每日 150 次。",
+    cost:"约 $0.06 / 天"
+  },
+  {
+    rank:"02", repo:"boss-helper", owner:"Ocyss", url:"https://github.com/Ocyss/boss-helper",
+    featured:true, picks:["pick","ext"], rankLabel:"最省事", badgeTone:"",
+    form:"浏览器扩展", stars:"—", lang:"TypeScript", license:"仅供学习交流",
+    stack:"WXT · Vue 3 · NuxtUI 4", mech:"GPT 招呼语 + 高级筛选", prio:"p1",
+    headline:"Boss直聘助手：批量投递与高级筛选，装完即用",
+    summary:"维护成正规浏览器扩展并上架 Chrome、Edge、Firefox 三端商店，是上手成本最低的方案，无需配置任何开发环境。",
+    feats:[
+      "优化页面 UI 并去除广告，界面清爽",
+      "批量投递简历，不用逐个点击",
+      "高级筛选：薪资、公司名、岗位名、招聘人数、JD 内容",
+      "通勤筛选：接高德 API 计算驾车与步行距离、时间",
+      "GPT 自动打招呼，支持模板语言与多模型管理",
+      "AI 筛选岗位，自适应 UI 也适配手机端"
+    ],
+    note:"<b>安装最简单：</b>直接装 Chrome 商店扩展（ID <code>ogkmgjbagackkdlcibcailacnncgonbn</code>）；国内打不开商店可用 Crx搜搜或 Edge 商店，Firefox 版也已上架。<code>0.2</code> 旧版本仍可在 greasyfork 安装。",
+    caution:"作者原话：使用该脚本有一定风险，如黑号、封号、权重降低等，本项目不承担任何责任。多账号管理功能已废弃，改为多配置切换。",
+    cost:"—"
+  },
+  {
+    rank:"03", repo:"auto-zhipin", owner:"ufownl", url:"https://github.com/ufownl/auto-zhipin",
+    featured:true, picks:["pick","cli"], rankLabel:"最可控", badgeTone:"",
+    form:"命令行 · 两段式", stars:"—", lang:"Python", license:"BSD-3-Clause",
+    stack:"Playwright · fast-agent", mech:"先筛选、后投递", prio:"p1",
+    headline:"Playwright 拉取岗位，AI 结合简历筛选后自动发起沟通",
+    summary:"把流程拆成两个独立命令：先用 query.py 拉岗位并让 AI 按简历打分，再用 apply.py 对入选岗位生成个性化文案。可控性最强的方案。",
+    feats:[
+      "query.py 拉取岗位，AI 结合简历智能筛选并输出评级",
+      "apply.py 按 JD 与简历生成个性化沟通文案并自动发起",
+      "支持城市、薪资、关键字、滚动页数等参数化查询",
+      "可自定义不接受的岗位标签，默认过滤派遣与猎头",
+      "支持公司黑名单文件，每行一个公司名",
+      "基于 fast-agent，可配置 Gemini 等模型"
+    ],
+    note:"<b>安装：</b>执行 <code>uv sync</code> 后运行 <code>uv run playwright install</code>，并在 <code>fastagent.secrets.yaml</code> 配置 API Key。城市与薪资代码可直接从 BOSS 网页 URL 参数中读取，例如 <code>?city=100010000&amp;salary=404</code>。",
+    caution:"简历仅支持文本文件（推荐 Markdown），PDF 需先自行转换。项目声明仅供学习用途，使用需自行承担合规后果。",
+    cost:"—"
+  },
+  {
+    rank:"04", repo:"Boss-Zhipin-Auto-Job-Application", owner:"Seeeeekiro",
+    url:"https://github.com/Seeeeekiro/Boss-Zhipin-Auto-Job-Application",
+    featured:true, picks:["pick","cli"], rankLabel:"最稳试跑", badgeTone:"alt",
+    form:"命令行", stars:"—", lang:"Python", license:"—",
+    stack:"nodriver · ChromaDB", mech:"简历向量化匹配", prio:"p2",
+    headline:"简历向量化匹配岗位，原生支持只生成不发送的试跑模式",
+    summary:"用向量数据库做简历与岗位的语义匹配，内置招呼语质量校验，并可直接开启 DRY_RUN 先验证文案质量。",
+    feats:[
+      "简历向量化（ChromaDB）做语义级岗位匹配",
+      "主循环：抓取 JD、LLM 生成招呼语、发送",
+      "DRY_RUN=1 只生成不发送，先行验证文案质量",
+      "内置 prompting、招呼语校验与投递日志审计",
+      "支持 DeepSeek、通义、智谱、OpenAI、Claude",
+      "可配置求职类型、关键词黑名单与招呼语风格"
+    ],
+    note:"<b>推荐接 DeepSeek</b>，成本低，<code>LLM_BASE_URL=https://api.deepseek.com</code>。搜索城市与关键词在 <code>src/boss_zhipin/cli.py</code> 约第 46 行修改，简历放 <code>resume/my_cover.pdf</code>。",
+    caution:"首次运行需微信扫码登录，Cookie 持久化在 <code>chrome_profile/</code>。简历向量化使用本地算法，不联网、不下载模型。",
+    cost:"建议先 dry-run"
+  },
+  {
+    rank:"05", repo:"BossHunter", owner:"shengjidaguai-china",
+    url:"https://github.com/shengjidaguai-china/BossHunter",
+    featured:true, picks:["pick","gui"], rankLabel:"最安全", badgeTone:"",
+    form:"本地程序 · Web 工作台", stars:"—", lang:"Python + Node", license:"PolyForm 非商业",
+    stack:"Chrome CDP · 本地 Web", mech:"人工确认后投递", prio:"p1",
+    headline:"JD 猎手：把是否发送的决定权留给人",
+    summary:"当前版本 v2.4.0。本地 Web 工作台，明确要求投递前必须人工确认，并内置较完整的防封控节奏控制。",
+    feats:[
+      "多平台岗位池：BOSS、智联、51job、猎聘串行采集并去重",
+      "AI 两级评分：先关键词预筛，再结合 JD 深度打分",
+      "投递前必须人工确认，支持逐个或批量确认",
+      "保守发送：随机间隔、时间窗口、每日上限、发送前浏览",
+      "HR 回复监测与跟进工作台",
+      "识别 HR 的简历请求，结合 JD 辅助生成定制简历"
+    ],
+    note:"<b>安装：</b>需 Python 3.10+、Node 22+、最新版 Chrome 与 AI API。构建后执行 <code>bosshunter web</code>，在 <code>127.0.0.1:8686</code> 面板上传简历并连接 AI，随后开启 Chrome 远程调试并在同一窗口登录平台，再运行 <code>bosshunter connect</code> 检查、<code>bosshunter run</code> 执行。",
+    caution:"检测到验证码、频率限制、登录墙或异常页面结构时会安全停止，不尝试绕过。仅 BOSS 支持自动发送，智联、51job、猎聘为只读采集后人工投递回填。",
+    cost:"—"
+  },
+  {
+    rank:"06", repo:"boss_react", owner:"FengLeo666", url:"https://github.com/FengLeo666/boss_react",
+    picks:[], form:"Agent 式", stars:"—", lang:"TypeScript", license:"—",
+    stack:"TypeScript", mech:"Agent 循环驱动", prio:"p0",
+    headline:"像 coding agent 一样自动投递 Boss 直聘",
+    summary:"把投递过程抽象成 Agent 任务循环的思路型项目，与写死流程的传统脚本路线不同。",
+    feats:[
+      "以 Agent 循环方式驱动投递，而非固定脚本流程",
+      "面向让模型自己决定下一步的设计取向",
+      "思路新颖，适合作为二次开发的参考"
+    ],
+    note:"公开资料较少，README 在常见分支上未取到。上手前建议先到仓库确认最新说明与依赖要求。",
+    caution:"资料稀薄、社区规模小，成熟度与长期维护情况需自行确认，不建议作为唯一方案。",
+    cost:"—"
+  },
+  {
+    rank:"07", repo:"boss-ai-assistant", owner:"liuruing", url:"https://github.com/liuruing/boss-ai-assistant",
+    picks:[], form:"浏览器扩展", stars:"—", lang:"JavaScript", license:"—",
+    stack:"Chrome 扩展", mech:"AI 匹配后打招呼", prio:"p0",
+    headline:"AI 分析岗位匹配度后自动打招呼的 Chrome 扩展",
+    summary:"轻量的扩展方案，主打用 AI 判断岗位是否值得投，可作为 boss-helper 之外的备选。",
+    feats:[
+      "AI 分析岗位匹配项，判断是否值得投递",
+      "自动发送打招呼消息",
+      "以 Chrome 扩展形式分发，安装成本低"
+    ],
+    note:"功能定位与 <code>boss-helper</code> 接近但体量小得多，可作为扩展类方案的备选对比。",
+    caution:"维护活跃度与功能完整度均低于 <code>boss-helper</code>，建议优先考虑后者。",
+    cost:"—"
+  },
+  {
+    rank:"08", repo:"boss-auto-job", owner:"xiarongwen", url:"https://github.com/xiarongwen/boss-auto-job",
+    picks:[], form:"Agent Skill", stars:"—", lang:"—", license:"—",
+    stack:"Agent Skill 封装", mech:"批量投递", prio:"p0",
+    headline:"封装为 Agent Skill 的批量投递能力",
+    summary:"把自动投递流程做成可挂载的 Skill，便于在支持该机制的 AI 客户端中复用，代表一种较新的封装趋势。",
+    feats:[
+      "封装为 Agent Skill，便于在 AI 客户端中复用",
+      "面向批量投递场景",
+      "与主流程解耦，适合定制自己的工作流"
+    ],
+    note:"此方向代表新趋势：把求职自动化做成可被 Agent 调用的技能，而不是独立应用。",
+    caution:"依赖具体 Agent 运行环境，通用性弱于独立应用；资料较少，需自行验证。",
+    cost:"—"
+  },
+  {
+    rank:"09", repo:"lakejobai-job-radar", owner:"lake121380-source",
+    url:"https://github.com/lake121380-source/lakejobai-job-radar",
+    picks:[], form:"Web + CLI", stars:"—", lang:"—", license:"—",
+    stack:"LLM 联动 · CLI 代理", mech:"接管聊天", prio:"p3",
+    headline:"岗位雷达：扫描批量投递，并向后延伸到接管聊天",
+    summary:"能力边界最激进的方案，除批量投递外还自动接管聊天、交换联系方式等环节。",
+    feats:[
+      "翻页扫描岗位并批量投递",
+      "AI 接管聊天对话",
+      "自动交换微信与简历",
+      "HR 真实姓名与法人信息识别",
+      "LLM 智能联动，Web 端日常操作，CLI 端供 AI 代理调用"
+    ],
+    note:"把投递之后的长尾沟通也一并自动化了，功能覆盖范围是这批项目里最广的。",
+    caution:"风险最高。自动接管聊天并索要联系方式，极易触发平台风控，也容易给招聘方留下不好的观感。强烈建议谨慎评估后再决定是否使用。",
+    cost:"—"
+  }
+];
+
+const listEl  = document.getElementById('list');
+const tbodyEl = document.getElementById('tbody');
+const countEl = document.getElementById('count');
+const qEl     = document.getElementById('q');
+const state   = { filter:'all', q:'' };
+
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rich = s => esc(s).replace(/&lt;(\/?)(b|code)&gt;/g, '<$1$2>');
+
+/* ---------- overview table ---------- */
+tbodyEl.innerHTML = PROJECTS.map(p => `
+  <tr>
+    <td class="name">
+      <span class="prio ${p.prio}"></span><a href="${p.url}" target="_blank" rel="noopener noreferrer">${esc(p.repo)}</a>
+      <span class="owner">${esc(p.owner)}</span>
+    </td>
+    <td class="dim">${esc(p.form)}</td>
+    <td class="dim">${esc(p.stack)}</td>
+    <td>${esc(p.mech)}</td>
+    <td class="dim">${esc(p.license)}</td>
+    <td class="stars">${esc(p.stars)}</td>
+  </tr>`).join('');
+
+/* ---------- detail entries ---------- */
+listEl.innerHTML = PROJECTS.map(p => {
+  const feats = p.feats.map(f => `<li>${rich(f)}</li>`).join('');
+  const dl = [['Star',p.stars],['语言',p.lang],['技术栈',p.stack],['许可证',p.license],['成本',p.cost]]
+    .filter(([,v]) => v && v !== '—')
+    .map(([k,v]) => `<dt>${esc(k)}</dt><dd class="${k === 'Star' ? 'num' : ''}">${esc(v)}</dd>`)
+    .join('');
+  const badge = p.rankLabel ? `<span class="badge ${p.badgeTone}">${esc(p.rankLabel)}</span>` : '';
+  return `
+  <article class="entry reveal${p.featured ? ' featured' : ''}"
+           data-picks="${p.picks.join(' ')}"
+           data-search="${esc([p.repo,p.owner,p.headline,p.summary,p.lang,p.stack,p.mech,p.form,...p.feats].join(' ').toLowerCase())}">
+    <div class="rail">
+      <span class="rank">${esc(p.rank)}</span>${badge}
+      <span class="rname"><a href="${p.url}" target="_blank" rel="noopener noreferrer">${esc(p.repo)}</a></span>
+      <span class="rowner">${esc(p.owner)}</span>
+      <dl>${dl}</dl>
+    </div>
+    <div class="body">
+      <h3 class="headline">${rich(p.headline)}</h3>
+      <p class="summary">${rich(p.summary)}</p>
+      <p class="subhead">核心特点</p>
+      <ul class="feat">${feats}</ul>
+      ${p.note ? `<p class="callout"><span class="lbl">配置要点</span>${rich(p.note)}</p>` : ''}
+      ${p.caution ? `<p class="callout caution"><span class="lbl">限制与风险</span>${rich(p.caution)}</p>` : ''}
+      <div class="entry-links">
+        <a class="btn primary" href="${p.url}" target="_blank" rel="noopener noreferrer">打开仓库</a>
+        <a class="btn" href="${p.url}#readme" target="_blank" rel="noopener noreferrer">查看 README</a>
+      </div>
+    </div>
+  </article>`;
+}).join('');
+
+const entries = Array.from(listEl.querySelectorAll('.entry'));
+
+/* ---------- filter / search ---------- */
+function apply(){
+  const q = state.q.trim().toLowerCase();
+  let shown = 0;
+  entries.forEach((el, i) => {
+    const p = PROJECTS[i];
+    const ok = (state.filter === 'all' || p.picks.includes(state.filter))
+            && (!q || el.dataset.search.includes(q));
+    if (!ok) el.classList.remove('in');
+    el.hidden = !ok;
+    if (ok) shown++;
+  });
+  countEl.textContent = `显示 ${shown} / ${PROJECTS.length}`;
+  let none = listEl.querySelector('.empty');
+  if (!shown){
+    if (!none){
+      none = document.createElement('p');
+      none.className = 'empty';
+      none.textContent = '没有匹配的项目，换个关键词或切回「全部」。';
+      listEl.appendChild(none);
+    }
+  } else if (none){ none.remove(); }
+  reveal();
+}
+
+document.getElementById('filters').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#filters button')
+    .forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+  state.filter = btn.dataset.filter;
+  apply();
+});
+
+let timer;
+qEl.addEventListener('input', e => {
+  clearTimeout(timer);
+  const v = e.target.value;
+  timer = setTimeout(() => { state.q = v; apply(); }, 110);
+});
+
+/* ---------- entrance reveal ---------- */
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let io = null;
+if (!reduce && 'IntersectionObserver' in window){
+  io = new IntersectionObserver(es => {
+    es.forEach(en => {
+      if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, { rootMargin:'0px 0px -8% 0px', threshold:.06 });
+}
+function reveal(){
+  entries.forEach((el, i) => {
+    if (el.hidden) return;
+    if (!io){ el.classList.add('in'); return; }
+    el.style.transitionDelay = Math.min(i * 45, 220) + 'ms';
+    if (el.classList.contains('in')) return;
+    io.observe(el);
+  });
+}
+
+/* ---------- scroll progress ---------- */
+const prog = document.getElementById('prog');
+let ticking = false;
+function onScroll(){
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    const p = h > 0 ? Math.min(window.scrollY / h, 1) : 0;
+    prog.style.transform = `scaleX(${p})`;
+    ticking = false;
+  });
+}
+window.addEventListener('scroll', onScroll, { passive:true });
+onScroll();
+
+apply();
+</script>
+</body>
+</html>
