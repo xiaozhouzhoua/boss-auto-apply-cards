@@ -2,11 +2,17 @@
 
 一份单文件 HTML 调研页，整理 GitHub 上可用于「BOSS 直聘自动投递简历」的开源项目。
 
+**在线查看 → https://xiaozhouzhoua.github.io/boss-auto-apply-cards/**
+
 ## 文件
 
 | 文件 | 说明 |
 |---|---|
 | `boss-auto-apply-cards.html` | 全部内容。双击即可用浏览器打开，无构建、无依赖、无外部请求 |
+| `.github/workflows/pages.yml` | 推送到 `main` 时自动发布站点，将上面的文件复制为站点入口 `index.html` |
+
+> 想在浏览器里看到渲染效果，用上面的在线地址。直接打开仓库里的 `.html`
+> 只会看到源码，因为 GitHub 对这类文件返回 `text/plain`。
 
 ## 内容
 
@@ -41,14 +47,24 @@
 | 系统开启「减弱动态效果」 | 停止光斑动画、取消入场位移、压缩过渡时长 |
 | 窄屏（≤900px / ≤640px） | 卡片转为单列，侧栏元数据折叠为一行 |
 
-## 本地预览
+## 预览
 
-直接双击 `boss-auto-apply-cards.html`，或用任意静态服务器：
+**在线**：https://xiaozhouzhoua.github.io/boss-auto-apply-cards/
+
+**本地**：直接双击 `boss-auto-apply-cards.html`，或用任意静态服务器：
 
 ```bash
 python -m http.server 8000
 # 然后访问 http://localhost:8000/boss-auto-apply-cards.html
 ```
+
+修改后推送到 `main`，Pages 会自动重新发布：
+
+```bash
+git add -A && git commit -m "更新调研内容" && git push
+```
+
+也可在仓库 Actions 页面手动触发 `Publish page` 工作流。
 
 ## 声明
 
