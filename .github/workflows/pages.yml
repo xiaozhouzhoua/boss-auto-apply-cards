@@ -1,0 +1,57 @@
+name: Publish page
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一次发布；新的推送取消排队中的旧任务，但不打断正在进行的发布
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 组装发布目录。站点入口必须是 index.html，因此把调研页复制为该名字。
+      # 原文件仍保留原名，仓库里可直接查看。
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          if [ -f boss-auto-apply-cards.html ]; then
+            cp boss-auto-apply-cards.html _site/index.html
+          else
+            echo "::error::boss-auto-apply-cards.html not found"
+            exit 1
+          fi
+          cp .gitattributes _site/.gitattributes 2>/dev/null || true
+          # 跳过 Jekyll，避免下划线开头的路径被忽略
+          touch _site/.nojekyll
+          echo "--- _site 内容 ---"
+          ls -la _site
+          echo "--- index.html 大小 ---"
+          wc -c < _site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
